@@ -1,0 +1,22 @@
+# Virtual environments
+.venv/
+venv/
+
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Tool caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Coverage data
+.coverage
+coverage.xml
+
+# Packaging artifacts
+build/
+dist/
+*.egg-info/

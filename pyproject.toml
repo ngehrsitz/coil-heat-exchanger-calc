@@ -1,0 +1,93 @@
+[project]
+name = "coil-heat-exchanger-calc"
+version = "0.1.0"
+description = "Thermal performance calculator for a fin-and-tube heating/cooling register."
+readme = "README.md"
+license = { text = "GPL-3.0-or-later" }
+requires-python = ">=3.13"
+dependencies = [
+    "PyQt6>=6.7",
+    "pyqtgraph>=0.13",
+    "CoolProp>=6.6",
+    "numpy>=2.0",
+]
+
+# Dev / CI tooling. Installed by `uv sync`, excluded from the built package.
+[dependency-groups]
+dev = [
+    "ruff>=0.6",
+    "mypy>=1.11",
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "pyinstaller>=6.0",
+]
+
+# ---------------------------------------------------------------------------
+# Ruff — linter + formatter
+# ---------------------------------------------------------------------------
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+extend-exclude = [".venv", "__pycache__"]
+
+[tool.ruff.lint]
+select = ["F", "E", "W", "I", "UP", "B", "C4"]
+ignore = [
+    "E741",  # ambiguous variable name — physics uses l_over_d etc.
+    "E501",  # line length is handled by the formatter; long formula lines are fine
+]
+# pep8-naming (N) is deliberately NOT selected. The code uses physics-convention
+# uppercase locals (C_air, R_air, X_M, Q_dry, G_c) on purpose; enforcing
+# snake_case would hurt readability of the correlations.
+
+[tool.ruff.lint.isort]
+known-first-party = ["physics", "sweep", "ui"]
+
+[tool.ruff.format]
+docstring-code-format = false  # leave the Unicode-math docstrings untouched
+
+# ---------------------------------------------------------------------------
+# mypy — static type checking of the pure-SI numeric core only
+# ---------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.13"
+files = ["physics", "sweep"]  # ui/ excluded — PyQt6 stubs are noisy
+check_untyped_defs = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_return_any = true
+# Pragmatic, not --strict: the core is annotated at its boundaries but has a few
+# internal untyped returns (e.g. _solve_wet's tuple|None).
+
+[[tool.mypy.overrides]]
+module = ["CoolProp.*", "pyqtgraph.*"]
+ignore_missing_imports = true  # neither ships type stubs
+
+# ---------------------------------------------------------------------------
+# pytest — also enforces the coverage floor (the same gate CI runs)
+# ---------------------------------------------------------------------------
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# Coverage rides along on every `uv run pytest`. --cov-fail-under is the hard gate:
+# every reachable statement and branch is tested, so the floor is 100%. The handful
+# of genuinely unreachable defensive guards (bad correlation output, degenerate
+# wet-coil states the regime detector never routes into, a Qt layout returning no
+# label) are marked `# pragma: no cover` at their source with a justification. The
+# Qt-backed ui/ tests run under the offscreen platform (set programmatically in
+# tests/test_ui.py). The CI %-summary step reads the .coverage data file via the
+# `coverage` CLI, so no --cov-report=xml is needed here.
+addopts = "--cov=physics --cov=sweep --cov=ui --cov-report=term-missing --cov-fail-under=100"
+
+# ---------------------------------------------------------------------------
+# coverage.py
+# ---------------------------------------------------------------------------
+[tool.coverage.run]
+branch = true
+source = ["physics", "sweep", "ui"]
+
+[tool.coverage.report]
+show_missing = true
+exclude_also = [
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]
